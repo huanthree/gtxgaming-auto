@@ -10,6 +10,10 @@ on:
 jobs:
   run-script:
     runs-on: ubuntu-latest
+    # V V V 在这里添加写入权限 V V V
+    permissions:
+      contents: write
+    # A A A 在这里添加写入权限 A A A
 
     steps:
     - name: Check out repository
