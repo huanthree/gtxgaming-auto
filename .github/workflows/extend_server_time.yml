@@ -1,0 +1,58 @@
+name: Extend Server Time
+
+on:
+  schedule:
+    # 每天 UTC 时间 00:00 运行一次 (例如，北京时间早上 8 点)
+    # 你可以根据需要调整这个时间
+    - cron: '0 0 * * *'
+  workflow_dispatch: # 允许手动触发 workflow
+
+jobs:
+  run-script:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Check out repository
+      uses: actions/checkout@v3
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x' # 使用最新的 Python 3 版本
+
+    - name: Install Playwright
+      run: |
+        pip install playwright
+        playwright install chromium # 安装 Chromium 浏览器
+
+    - name: Run Python script
+      env:
+        # 确保在 GitHub Secrets 中设置这些变量
+        REMEMBER_WEB_COOKIE: ${{ secrets.REMEMBER_WEB_COOKIE }}
+        LOGIN_EMAIL: ${{ secrets.LOGIN_EMAIL }}
+        LOGIN_PASSWORD: ${{ secrets.LOGIN_PASSWORD }}
+      run: python main.py
+
+    - name: Commit time.txt to repo
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        git config user.name "github-actions[bot]"
+        git config user.email "github-actions[bot]@users.noreply.github.com"
+
+        # 如果 time.txt 不存在，说明是第一次运行
+        if [ ! -f time.txt ]; then
+          echo "首次生成时间：$(date +'%Y-%m-%d %H:%M:%S')" > time.txt
+        else
+          echo "$(date +'%Y-%m-%d %H:%M:%S')" > time.txt
+        fi
+
+        git add time.txt
+
+        # 如果有更改再提交
+        if git diff --cached --quiet; then
+          echo "无变化，无需提交"
+        else
+          git commit -m "?? 更新时间文件: $(date +'%Y-%m-%d %H:%M:%S')"
+          git push origin HEAD:main
+        fi
